@@ -1,0 +1,26 @@
+node{
+    stage('SCM checkout'){
+    git credentialsId: 'a7d71197-bb5b-4a80-b597-88ba469276c1', url: 'https://github.com/saurabhbahl19/ContinousIntegrationforDOCKER.git'
+    }
+    stage('MVN Package '){
+        def mvnHome = tool name: 'Maven', type: 'maven'
+        def mvnCMD = "${mvnHome}/bin/mvn"
+        sh label: '', script: "${mvnCMD} clean package"
+    }
+    stage('BUILD DOCKER IMAGE '){
+        sh 'docker build -t saurabhbahl19/my-app:2.0.0 .'
+    }
+    stage('Push Docker Image'){
+     withCredentials([string(credentialsId: 'docker-pwd', variable: 'dockerhubpwd')]) {
+        sh "docker login -u saurabhbahl19 -p ${dockerHubPwd}"
+     }
+     sh 'docker push saurabhbahl19/my-app:2.0.0'
+
+    stage('Run Container on Dev Server'){
+     def dockerRun = 'docker run -p 8081:8081 -d --name my-app saurabhbahl19/my-app:2.0.0'
+     sshagent(['dev-server']) {
+       sh "ssh -o StrictHostKeyChecking=no ec2-user@18.222.187.11 ${dockerRun}"
+     }
+   }
+   }
+}
